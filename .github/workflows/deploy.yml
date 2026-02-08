@@ -50,6 +50,7 @@ jobs:
           {
             "family": "${SERVICE_NAME}",
             "networkMode": "awsvpc",
+            "executionRoleArn": "arn:aws:iam::148557232412:role/ecsTaskExecutionRole1",
             "containerDefinitions": [
               {
                 "name": "${SERVICE_NAME}",
@@ -70,6 +71,9 @@ jobs:
           EOF
 
           aws ecs register-task-definition --cli-input-json file://new-task-def.json
+
+
+
 
       # 6️⃣ Deploy ECS service with new revision
       - name: Update ECS service
