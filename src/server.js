@@ -15,7 +15,7 @@ app.get("/health", (req, res) => {
  */
 app.get("/hello", (req, res) => {
     res.json({
-        message: "Hello from Node.js API 👋 hello"
+        message: "Hello from Node.js API this is new"
     });
 });
 
