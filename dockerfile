@@ -1,20 +1,8 @@
-# Use official Node image
-FROM node:18-alpine
-
-# Create app directory
-WORKDIR /app
-
-# Copy dependency files first (better caching)
+FROM node:18
+WORKDIR /cicd
 COPY package*.json ./
-
-# Install dependencies
-RUN npm install --production
-
-# Copy the rest of the code
+RUN npm install
 COPY . .
-
-# App listens on port 3000
 EXPOSE 3000
+CMD ["node", "src/server.js"]
 
-# Start the app
-CMD ["npm", "start"]
