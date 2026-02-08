@@ -1,9 +1,9 @@
-name: CI/CD to AWS ECS
+name: CI/CD to ECS
 
 on:
   push:
     branches:
-      - main  # deploy from main branch
+      - main
 
 jobs:
   deploy:
@@ -14,14 +14,12 @@ jobs:
       ECR_REPO: my-api
       CLUSTER_NAME: api-cluster
       SERVICE_NAME: api-task-service-lbjwehdx
-      EXECUTION_ROLE_ARN: ${{ secrets.ECS_EXECUTION_ROLE_ARN }} # must be created in AWS
+      EXECUTION_ROLE_ARN: ${{ secrets.ECS_EXECUTION_ROLE_ARN }}
 
     steps:
-      # 1️⃣ Checkout code
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v3
 
-      # 2️⃣ Configure AWS credentials
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -29,13 +27,11 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      # 3️⃣ Login to Amazon ECR
       - name: Login to Amazon ECR
         run: |
           aws ecr get-login-password --region $AWS_REGION | \
           docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
 
-      # 4️⃣ Build and push Docker image
       - name: Build and push Docker image
         run: |
           IMAGE_TAG=$GITHUB_SHA
@@ -45,45 +41,27 @@ jobs:
           docker push $IMAGE_URI
           echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
 
-      # 5️⃣ Register ECS task definition with execution role
-      - name: Register ECS task definition
+      - name: Register new ECS task definition revision
         run: |
-          cat > new-task-def.json <<EOF
-          {
-            "family": "${SERVICE_NAME}",
-            "networkMode": "awsvpc",
-            "executionRoleArn": "${EXECUTION_ROLE_ARN}",
-            "containerDefinitions": [
-              {
-                "name": "${SERVICE_NAME}",
-                "image": "${{ env.IMAGE_URI }}",
-                "portMappings": [
-                  {
-                    "containerPort": 3000,
-                    "protocol": "tcp"
-                  }
-                ],
-                "essential": true,
-                "environment": [
-                  {
-                    "name": "GITHUB_SHA",
-                    "value": "${GITHUB_SHA}"
-                  }
-                ]
-              }
-            ],
-            "requiresCompatibilities": ["FARGATE"],
-            "cpu": "256",
-            "memory": "512"
-          }
-          EOF
+          aws ecs register-task-definition \
+            --family $SERVICE_NAME \
+            --network-mode awsvpc \
+            --requires-compatibilities FARGATE \
+            --cpu 256 \
+            --memory 512 \
+            --execution-role-arn $EXECUTION_ROLE_ARN \
+            --container-definitions "[{
+              \"name\": \"$SERVICE_NAME\",
+              \"image\": \"${{ env.IMAGE_URI }}\",
+              \"essential\": true,
+              \"portMappings\": [{\"containerPort\": 3000, \"hostPort\": 3000, \"protocol\": \"tcp\"}]
+            }]" \
+            --region $AWS_REGION
 
-          aws ecs register-task-definition --cli-input-json file://new-task-def.json
-
-      # 6️⃣ Update ECS service
-      - name: Update ECS service
+      - name: Update ECS service to use new task definition
         run: |
           aws ecs update-service \
             --cluster $CLUSTER_NAME \
             --service $SERVICE_NAME \
-            --force-new-deployment
+            --task-definition $SERVICE_NAME \
+            --region $AWS_REGION
