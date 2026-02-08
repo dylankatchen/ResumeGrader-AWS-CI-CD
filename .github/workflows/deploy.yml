@@ -3,7 +3,7 @@ name: CI/CD to AWS ECS
 on:
   push:
     branches:
-      - main  # Only deploy from main
+      - main  # deploy from main branch
 
 jobs:
   deploy:
@@ -11,13 +11,13 @@ jobs:
     env:
       AWS_REGION: ${{ secrets.AWS_REGION }}
       AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-      ECR_REPO: my-api            # ECR repository name
-      CLUSTER_NAME: my-cluster    # ECS cluster name
-      SERVICE_NAME: my-service    # ECS service name
-      EXECUTION_ROLE_ARN: ${{ secrets.ECS_EXECUTION_ROLE_ARN }}
+      ECR_REPO: my-api
+      CLUSTER_NAME: api-cluster
+      SERVICE_NAME: api-task-service-lbjwehdx
+      EXECUTION_ROLE_ARN: ${{ secrets.ECS_EXECUTION_ROLE_ARN }} # must be created in AWS
 
     steps:
-      # 1️⃣ Checkout repo
+      # 1️⃣ Checkout code
       - name: Checkout repository
         uses: actions/checkout@v3
 
@@ -35,7 +35,7 @@ jobs:
           aws ecr get-login-password --region $AWS_REGION | \
           docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
 
-      # 4️⃣ Build Docker image with commit SHA tag
+      # 4️⃣ Build and push Docker image
       - name: Build and push Docker image
         run: |
           IMAGE_TAG=$GITHUB_SHA
@@ -45,7 +45,7 @@ jobs:
           docker push $IMAGE_URI
           echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
 
-      # 5️⃣ Register new ECS task definition revision
+      # 5️⃣ Register ECS task definition with execution role
       - name: Register ECS task definition
         run: |
           cat > new-task-def.json <<EOF
@@ -80,7 +80,7 @@ jobs:
 
           aws ecs register-task-definition --cli-input-json file://new-task-def.json
 
-      # 6️⃣ Update ECS service to use new task definition
+      # 6️⃣ Update ECS service
       - name: Update ECS service
         run: |
           aws ecs update-service \
