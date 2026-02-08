@@ -9,7 +9,7 @@ app.get('/health', (req, res) => {
 
 // Example API route
 app.get('/', (req, res) => {
-    res.send('Hello World! This is your latest commit.');
+    res.send('Hello World! This is your latest commit xd.');
 });
 
 app.listen(PORT, '0.0.0.0', () => {
