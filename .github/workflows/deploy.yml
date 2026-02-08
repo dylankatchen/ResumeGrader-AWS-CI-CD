@@ -12,8 +12,8 @@ jobs:
       AWS_REGION: ${{ secrets.AWS_REGION }}
       AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
       ECR_REPO: my-api          # Your ECR repo name
-      CLUSTER_NAME: my-cluster
-      SERVICE_NAME: my-service
+      CLUSTER_NAME: api-cluster
+      SERVICE_NAME: api-task-service-lbjwehdx
 
     steps:
       # 1️⃣ Checkout code
