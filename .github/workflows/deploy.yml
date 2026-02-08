@@ -3,7 +3,7 @@ name: CI/CD to AWS ECS
 on:
   push:
     branches:
-      - main  # Deploy only from main
+      - main  # Only deploy from main
 
 jobs:
   deploy:
@@ -11,12 +11,13 @@ jobs:
     env:
       AWS_REGION: ${{ secrets.AWS_REGION }}
       AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-      ECR_REPO: my-api          # Your ECR repo name
-      CLUSTER_NAME: api-cluster
-      SERVICE_NAME: api-task-service-lbjwehdx
+      ECR_REPO: my-api            # ECR repository name
+      CLUSTER_NAME: my-cluster    # ECS cluster name
+      SERVICE_NAME: my-service    # ECS service name
+      EXECUTION_ROLE_ARN: ${{ secrets.ECS_EXECUTION_ROLE_ARN }}
 
     steps:
-      # 1️⃣ Checkout code
+      # 1️⃣ Checkout repo
       - name: Checkout repository
         uses: actions/checkout@v3
 
@@ -28,29 +29,30 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      # 3️⃣ Login to ECR
+      # 3️⃣ Login to Amazon ECR
       - name: Login to Amazon ECR
         run: |
           aws ecr get-login-password --region $AWS_REGION | \
           docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
 
-      # 4️⃣ Build Docker image with commit SHA
+      # 4️⃣ Build Docker image with commit SHA tag
       - name: Build and push Docker image
         run: |
           IMAGE_TAG=$GITHUB_SHA
+          IMAGE_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO:$IMAGE_TAG
           docker build -t $ECR_REPO:$IMAGE_TAG .
-          docker tag $ECR_REPO:$IMAGE_TAG $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO:$IMAGE_TAG
-          docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO:$IMAGE_TAG
-          echo "IMAGE_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO:$IMAGE_TAG" >> $GITHUB_ENV
+          docker tag $ECR_REPO:$IMAGE_TAG $IMAGE_URI
+          docker push $IMAGE_URI
+          echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
 
-      # 5️⃣ Register new ECS task definition (even if first deploy)
+      # 5️⃣ Register new ECS task definition revision
       - name: Register ECS task definition
         run: |
           cat > new-task-def.json <<EOF
           {
             "family": "${SERVICE_NAME}",
             "networkMode": "awsvpc",
-            "executionRoleArn": "arn:aws:iam::148557232412:role/ecsTaskExecutionRole1",
+            "executionRoleArn": "${EXECUTION_ROLE_ARN}",
             "containerDefinitions": [
               {
                 "name": "${SERVICE_NAME}",
@@ -61,7 +63,13 @@ jobs:
                     "protocol": "tcp"
                   }
                 ],
-                "essential": true
+                "essential": true,
+                "environment": [
+                  {
+                    "name": "GITHUB_SHA",
+                    "value": "${GITHUB_SHA}"
+                  }
+                ]
               }
             ],
             "requiresCompatibilities": ["FARGATE"],
@@ -72,10 +80,7 @@ jobs:
 
           aws ecs register-task-definition --cli-input-json file://new-task-def.json
 
-
-
-
-      # 6️⃣ Deploy ECS service with new revision
+      # 6️⃣ Update ECS service to use new task definition
       - name: Update ECS service
         run: |
           aws ecs update-service \
