@@ -53,8 +53,8 @@ app.post('/api/grade', upload.single('resume'), async (req, res) => {
             return res.status(400).json({ error: 'Resume and Job Description are required' });
         }
 
-        // Construct Prompt for Claude
-        const prompt = `\n\nHuman: You are an expert technical recruiter and hiring manager. 
+        // Construct Prompt for Nova (Messages API)
+        const userMessage = `You are an expert technical recruiter and hiring manager. 
         Please grade the following resume against the job description provided.
         
         Job Description:
@@ -68,19 +68,26 @@ app.post('/api/grade', upload.single('resume'), async (req, res) => {
         - pointers: A list of specific, actionable improvements or feedback.
         - reasoning: A brief explanation of the score.
 
-        Do not include any preamble or postscript, just the JSON.
-
-        \n\nAssistant:`;
+        Do not include any preamble or postscript, just the JSON.`;
 
         const input = {
             modelId: "us.amazon.nova-2-lite-v1:0",
             contentType: "application/json",
             accept: "application/json",
             body: JSON.stringify({
-                prompt: prompt,
-                max_tokens_to_sample: 1000,
-                temperature: 0.5,
-                top_p: 0.9,
+                inferenceConfig: {
+                    max_new_tokens: 1000,
+                    temperature: 0.5,
+                    top_p: 0.9
+                },
+                messages: [
+                    {
+                        role: "user",
+                        content: [
+                            { text: userMessage }
+                        ]
+                    }
+                ]
             })
         };
 
@@ -88,7 +95,16 @@ app.post('/api/grade', upload.single('resume'), async (req, res) => {
         const response = await bedrock.send(command);
 
         const responseBody = JSON.parse(new TextDecoder().decode(response.body));
-        const completion = responseBody.completion;
+
+        // Nova response structure
+        let completion;
+        if (responseBody.output && responseBody.output.message) {
+            completion = responseBody.output.message.content[0].text;
+        } else {
+            // Fallback or error logging
+            console.error('Unexpected model response structure:', responseBody);
+            completion = JSON.stringify(responseBody);
+        }
 
         // Attempt to parse JSON from the completion
         try {
