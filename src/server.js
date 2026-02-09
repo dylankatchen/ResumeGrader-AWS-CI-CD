@@ -2,6 +2,9 @@ const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Trust ALB proxy
+app.set("trust proxy", 1);
+
 // Health check for ALB
 app.get('/health', (req, res) => {
     res.status(200).send('ok');
