@@ -1,3 +1,13 @@
+# Node
+node_modules/
+npm-debug.log*
+
+# Env
 .env
-package-lock.json
-node_modules
+
+# Build artifacts
+dist/
+build/
+
+# OS junk
+.DS_Store
