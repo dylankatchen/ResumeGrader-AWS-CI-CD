@@ -51,6 +51,7 @@ jobs:
             --cpu 256 \
             --memory 512 \
             --execution-role-arn $EXECUTION_ROLE_ARN \
+            --task-role-arn $EXECUTION_ROLE_ARN \
             --container-definitions "[{
               \"name\": \"$SERVICE_NAME\",
               \"image\": \"${{ env.IMAGE_URI }}\",
