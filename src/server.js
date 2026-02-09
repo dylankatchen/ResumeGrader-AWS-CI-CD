@@ -73,7 +73,7 @@ app.post('/api/grade', upload.single('resume'), async (req, res) => {
         \n\nAssistant:`;
 
         const input = {
-            modelId: "anthropic.claude-v2",
+            modelId: "us.amazon.nova-2-lite-v1:0",
             contentType: "application/json",
             accept: "application/json",
             body: JSON.stringify({
