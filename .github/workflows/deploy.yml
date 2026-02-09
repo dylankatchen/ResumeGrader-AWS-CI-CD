@@ -15,6 +15,7 @@ jobs:
       CLUSTER_NAME: api-cluster
       SERVICE_NAME: api-task-service-lbjwehdx
       EXECUTION_ROLE_ARN: ${{ secrets.ECS_EXECUTION_ROLE_ARN }}
+      BEDROCK_SECRET: ${{ secrets.BEDROCK_SECRET }}
 
     steps:
       - name: Checkout code

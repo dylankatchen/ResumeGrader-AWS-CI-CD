@@ -17,10 +17,96 @@ app.get('/api/hello', (req, res) => {
     res.send('Hello from the API!');
 });
 
-// The "catchall" handler: for any request that doesn't
-// match one above, send back React's index.html file.
+
+const multer = require('multer');
+const pdf = require('pdf-parse');
+const { BedrockRuntimeClient, InvokeModelCommand } = require('@aws-sdk/client-bedrock-runtime');
+
+// Configure Multer for memory storage
+const upload = multer({ storage: multer.memoryStorage() });
+
+// Initialize Bedrock Client
+const bedrock = new BedrockRuntimeClient({ region: 'us-east-1' });
+
 app.get(/.*/, (req, res) => {
     res.sendFile(path.join(__dirname, '../public/index.html'));
+});
+
+// Resume Grading Endpoint
+app.post('/api/grade', upload.single('resume'), async (req, res) => {
+    try {
+        const jobDescription = req.body.jobDescription;
+        let resumeText = req.body.resumeText || '';
+
+        // If a file was uploaded, parse it
+        if (req.file) {
+            if (req.file.mimetype === 'application/pdf') {
+                const data = await pdf(req.file.buffer);
+                resumeText = data.text;
+            } else {
+                // Assume text file
+                resumeText = req.file.buffer.toString('utf-8');
+            }
+        }
+
+        if (!resumeText || !jobDescription) {
+            return res.status(400).json({ error: 'Resume and Job Description are required' });
+        }
+
+        // Construct Prompt for Claude
+        const prompt = `\n\nHuman: You are an expert technical recruiter and hiring manager. 
+        Please grade the following resume against the job description provided.
+        
+        Job Description:
+        ${jobDescription}
+
+        Resume:
+        ${resumeText}
+
+        Provide a structured response in JSON format with the following keys:
+        - score: A number between 0 and 100.
+        - pointers: A list of specific, actionable improvements or feedback.
+        - reasoning: A brief explanation of the score.
+
+        Do not include any preamble or postscript, just the JSON.
+
+        \n\nAssistant:`;
+
+        const input = {
+            modelId: "anthropic.claude-v2",
+            contentType: "application/json",
+            accept: "application/json",
+            body: JSON.stringify({
+                prompt: prompt,
+                max_tokens_to_sample: 1000,
+                temperature: 0.5,
+                top_p: 0.9,
+            })
+        };
+
+        const command = new InvokeModelCommand(input);
+        const response = await bedrock.send(command);
+
+        const responseBody = JSON.parse(new TextDecoder().decode(response.body));
+        const completion = responseBody.completion;
+
+        // Attempt to parse JSON from the completion
+        try {
+            // Find JSON start and end just in case
+            const jsonStart = completion.indexOf('{');
+            const jsonEnd = completion.lastIndexOf('}') + 1;
+            const jsonString = completion.substring(jsonStart, jsonEnd);
+            const result = JSON.parse(jsonString);
+            res.json(result);
+        } catch (e) {
+            console.error('Failed to parse model response:', completion);
+            res.json({ score: 0, pointers: ['Error parsing AI response'], reasoning: completion });
+        }
+
+    } catch (error) {
+        console.error('Error grading resume:', error);
+        res.status(500).json({ error: 'Failed to grade resume', details: error.message });
+    }
 });
 
 app.listen(PORT, '0.0.0.0', () => {

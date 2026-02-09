@@ -1,0 +1,12 @@
+
+John Doe
+Software Engineer
+
+Experience:
+- Senior Software Engineer at Tech Corp (2020-Present)
+  - Built scalable microservices using Node.js and AWS.
+  - Led a team of 5 developers.
+- Software Developer at StartUp Inc (2018-2020)
+  - Developed React frontend for e-commerce platform.
+
+Skills: JavaScript, TypeScript, AWS, Docker, React.
