@@ -144,8 +144,8 @@ function App() {
                   type="submit"
                   disabled={loading}
                   className={`w-full py-4 px-6 rounded-xl text-white font-semibold text-lg shadow-lg shadow-indigo-200 transition-all transform hover:-translate-y-0.5 ${loading
-                      ? 'bg-slate-300 cursor-not-allowed text-slate-500 shadow-none'
-                      : 'bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 focus:ring-4 focus:ring-indigo-100'
+                    ? 'bg-slate-300 cursor-not-allowed text-slate-500 shadow-none'
+                    : 'bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 focus:ring-4 focus:ring-indigo-100'
                     }`}
                 >
                   {loading ? (
@@ -174,7 +174,7 @@ function App() {
           </div>
 
           {/* Results Column */}
-          <div className={`transition-all duration-500 ${result ? 'opacity-100 translate-y-0' : 'opacity-50 blur-sm pointer-events-none grayscale'}`}>
+          <div className={`transition-all duration-500 ${result ? 'opacity-100 translate-y-0' : 'opacity-100 blur-xs pointer-events-none'}`}>
             <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden relative">
 
               {/* Result Content */}
@@ -182,8 +182,8 @@ function App() {
                 <>
                   {/* Top Score Banner */}
                   <div className={`p-8 pb-12 text-center text-white ${result.score >= 80 ? 'bg-gradient-to-br from-green-500 to-emerald-600' :
-                      result.score >= 60 ? 'bg-gradient-to-br from-amber-400 to-orange-500' :
-                        'bg-gradient-to-br from-red-500 to-pink-600'
+                    result.score >= 60 ? 'bg-gradient-to-br from-amber-400 to-orange-500' :
+                      'bg-gradient-to-br from-red-500 to-pink-600'
                     }`}>
                     <h2 className="text-lg font-medium opacity-90 mb-2">Match Score</h2>
                     <div className="text-7xl font-bold tracking-tighter mb-2">{result.score}</div>
